@@ -1,0 +1,5 @@
+openapi: 3.0.3
+info: {title: Port Stowage Planner, version: 1.0.0}
+paths:
+  /api/v1/plans/solve: {post: {summary: Solve deterministic stowage plan}}
+  /api/v1/plans/{id}/publish: {post: {summary: Publish plan}}
