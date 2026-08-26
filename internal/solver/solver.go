@@ -82,6 +82,6 @@ func Solve(ctx context.Context, vessel domain.Vessel, voyage domain.Voyage, cs [
 			pruned++
 		}
 	}
-	obj := domain.Objective{VesselTime: float64(len(decisions)) * 2, Rehandles: float64(pruned), CraneImbalance: float64(len(decisions) % 3), HazardRisk: float64(pruned)}
+	obj := ComputeObjective(decisions, pruned)
 	return Result{Decisions: decisions, Objective: obj, Feasible: len(decisions) == len(cs), Pruned: pruned, BestKnown: time.Since(start) > budget}
 }

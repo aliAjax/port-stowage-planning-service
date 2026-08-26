@@ -100,7 +100,9 @@ func (s *Server) solve(w http.ResponseWriter, r *http.Request) {
 	res := solver.Solve(r.Context(), s.vessel, v, cs, nil, 500*time.Millisecond)
 	p := domain.Plan{ID: req.ID, VoyageID: req.VoyageID, Version: "v1", State: domain.StateDraft, Decisions: res.Decisions, Objective: res.Objective, Explanations: map[string][]string{}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(), Revision: 0}
 	for _, d := range res.Decisions {
-		p.Explanations[d.ContainerID] = d.Reasons
+		reasons := make([]string, len(d.Reasons))
+		copy(reasons, d.Reasons)
+		p.Explanations[d.ContainerID] = reasons
 	}
 	p.ContentHash = p.StableHash()
 	if err := s.Store.SavePlan(r.Context(), p); err != nil {
