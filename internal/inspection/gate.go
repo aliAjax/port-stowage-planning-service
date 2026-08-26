@@ -68,7 +68,7 @@ func (g *Inspector) Inspect(r GateRecord) GateResult {
 	if len(holds) > 0 {
 		g.holds[r.ContainerID] = append(g.holds[r.ContainerID], holds...)
 	}
-	res.Holds = g.holds[r.ContainerID]
+	res.Holds = append([]string(nil), g.holds[r.ContainerID]...)
 	res.Accepted = len(res.Holds) == 0
 	return res
 }
@@ -84,10 +84,11 @@ func (g *Inspector) Release(containerID, sealNo string) error {
 			return fmt.Errorf("seal still missing for %s", containerID)
 		}
 	}
+	delete(g.holds, containerID)
 	return nil
 }
 
 // HoldsFor returns the container's current holds.
 func (g *Inspector) HoldsFor(containerID string) []string {
-	return g.holds[containerID]
+	return append([]string(nil), g.holds[containerID]...)
 }

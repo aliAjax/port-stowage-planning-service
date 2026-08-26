@@ -20,9 +20,9 @@ func (l *HoldLedger) Add(containerID string, holds ...string) {
 	l.holds[containerID] = append(l.holds[containerID], holds...)
 }
 
-// Get returns the current holds of a container.
+// Get returns a copy of the container's current holds.
 func (l *HoldLedger) Get(containerID string) []string {
-	return l.holds[containerID]
+	return append([]string(nil), l.holds[containerID]...)
 }
 
 // Clear removes all holds of a container.
