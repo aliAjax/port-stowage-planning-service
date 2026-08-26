@@ -15,7 +15,9 @@ func IssueLease(i domain.WorkInstruction, now time.Time, ttl time.Duration) doma
 	return i
 }
 
-// ValidLease checks the expiry of an instruction.
+// ValidLease reports whether an instruction has a non-empty lease token that
+// has not yet expired. An instruction issued without a lease token is never
+// valid, regardless of the expiry field.
 func ValidLease(i domain.WorkInstruction, now time.Time) bool {
-	return now.Before(i.LeaseUntil)
+	return i.LeaseToken != "" && now.Before(i.LeaseUntil)
 }
