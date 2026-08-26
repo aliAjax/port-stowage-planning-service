@@ -18,10 +18,10 @@ func Overlaps(a, b Window) bool {
 	return a.Start.Before(b.End) && b.Start.Before(a.End)
 }
 
-// Contains reports whether a window covers the given instant, treating the
-// end instant as still occupied.
+// Contains reports whether a window covers the given instant, using a
+// half-open interval [Start, End) so the exact end instant is free.
 func Contains(w Window, at time.Time) bool {
-	return !w.Start.After(at) && !w.End.Before(at)
+	return !w.Start.After(at) && at.Before(w.End)
 }
 
 // SortByStart orders windows by start time.
