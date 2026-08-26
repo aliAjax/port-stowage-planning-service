@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: port-stowage-planner}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: port-stowage-planner}}
+  template:
+    metadata: {labels: {app: port-stowage-planner}}
+    spec:
+      containers:
+      - name: planner
+        image: port-stowage-planner:latest
+        ports: [{containerPort: 8080}]
+        readinessProbe: {httpGet: {path: /readyz, port: 8080}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: port-stowage-planner}
+spec:
+  selector: {app: port-stowage-planner}
+  ports: [{port: 8080, targetPort: 8080}]
