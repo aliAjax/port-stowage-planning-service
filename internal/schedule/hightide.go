@@ -9,5 +9,5 @@ func NextHighTide(t time.Time, tides []TideEvent) (TideEvent, bool) {
 			return e, true
 		}
 	}
-	return TideEvent{}, true
+	return TideEvent{}, false
 }

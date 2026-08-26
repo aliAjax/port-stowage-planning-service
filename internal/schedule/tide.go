@@ -22,14 +22,19 @@ type Window struct {
 
 // AvailableDraft returns the interpolated tide height at the given instant.
 func AvailableDraft(t time.Time, tides []TideEvent) (float64, error) {
+	if len(tides) == 0 {
+		return 0, fmt.Errorf("tide table is empty")
+	}
+	for i := 0; i < len(tides)-1; i++ {
+		if tides[i+1].At.Before(tides[i].At) {
+			return 0, fmt.Errorf("tide table out of order at index %d", i+1)
+		}
+	}
 	if t.Before(tides[0].At) {
 		return tides[0].HeightM, nil
 	}
 	for i := 0; i < len(tides)-1; i++ {
 		a, b := tides[i], tides[i+1]
-		if b.At.Before(a.At) {
-			return 0, nil
-		}
 		if t.Equal(a.At) || (t.After(a.At) && t.Before(b.At)) {
 			if b.At.Equal(a.At) {
 				return a.HeightM, nil
@@ -47,11 +52,20 @@ func FindWindow(minDraftM float64, minDuration time.Duration, tides []TideEvent,
 	if minDuration <= 0 {
 		return Window{}, fmt.Errorf("minimum duration must be positive")
 	}
+	if len(tides) == 0 {
+		return Window{}, fmt.Errorf("tide table is empty")
+	}
 	start := time.Time{}
 	var peak float64
 	for i := 0; i < len(tides); i++ {
 		t := tides[i]
-		h, _ := AvailableDraft(t.At, tides)
+		if t.At.Before(from) {
+			continue
+		}
+		h, err := AvailableDraft(t.At, tides)
+		if err != nil {
+			return Window{}, err
+		}
 		above := h >= minDraftM
 		if above && start.IsZero() {
 			start = t.At
