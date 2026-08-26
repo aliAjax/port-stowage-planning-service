@@ -1,0 +1,7 @@
+syntax = "proto3";
+package planner.v1;
+service Planner { rpc Solve(SolveRequest) returns (Plan); rpc Explain(ExplainRequest) returns (ExplainResponse); }
+message SolveRequest { string plan_id = 1; string voyage_id = 2; }
+message Plan { string id = 1; string state = 2; string content_hash = 3; }
+message ExplainRequest { string plan_id = 1; }
+message ExplainResponse { map<string,string> reasons = 1; }
