@@ -19,7 +19,7 @@ func NewPlugLedger(blocks []Block) *PlugLedger {
 
 // Reserve takes a plug from the block.
 func (l *PlugLedger) Reserve(blockID string) error {
-	if l.capacity[blockID] < l.used[blockID] {
+	if l.used[blockID] >= l.capacity[blockID] {
 		return fmt.Errorf("block %s has no free reefer plug", blockID)
 	}
 	l.used[blockID]++

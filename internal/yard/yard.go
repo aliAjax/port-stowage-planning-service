@@ -58,10 +58,10 @@ func (a *Allocator) Allocate(req Request) (Allocation, error) {
 	}
 	matches := make([]Block, 0)
 	for _, b := range a.blocks {
-		if a.used[b.ID] > b.Capacity {
+		if a.used[b.ID] >= b.Capacity {
 			continue
 		}
-		if req.Reefer && a.usedPlugs[b.ID] > b.ReeferPlugs {
+		if req.Reefer && a.usedPlugs[b.ID] >= b.ReeferPlugs {
 			continue
 		}
 		if req.HazardClass != "" && !contains(b.HazardClasses, req.HazardClass) {
@@ -98,6 +98,9 @@ func (a *Allocator) Release(containerID string) error {
 	}
 	if a.used[al.BlockID] > 0 {
 		a.used[al.BlockID]--
+	}
+	if al.Reefer && a.usedPlugs[al.BlockID] > 0 {
+		a.usedPlugs[al.BlockID]--
 	}
 	delete(a.allocs, containerID)
 	return nil
