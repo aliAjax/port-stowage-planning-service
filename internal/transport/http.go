@@ -140,7 +140,10 @@ func (s *Server) planAction(w http.ResponseWriter, r *http.Request) {
 		for i, d := range p.Decisions {
 			p.Instructions = append(p.Instructions, dispatch.Lease(domain.WorkInstruction{ID: fmt.Sprintf("%s-i-%d", p.ID, i+1), PlanID: p.ID, ContainerID: d.ContainerID, Sequence: i + 1, CreatedAt: time.Now().UTC(), Immutable: true}, time.Now().UTC(), 10*time.Minute))
 		}
-		_ = s.Store.SavePlan(r.Context(), p)
+		if err := s.Store.SavePlan(r.Context(), p); err != nil {
+			write(w, map[string]string{"error": "plan was modified concurrently; please retry"}, 409)
+			return
+		}
 		write(w, p, 200)
 	case "freeze":
 		if !domain.ValidTransition(p.State, domain.StateFrozen) {
@@ -149,7 +152,10 @@ func (s *Server) planAction(w http.ResponseWriter, r *http.Request) {
 		}
 		p.State = domain.StateFrozen
 		p.Revision++
-		_ = s.Store.SavePlan(r.Context(), p)
+		if err := s.Store.SavePlan(r.Context(), p); err != nil {
+			write(w, map[string]string{"error": "plan was modified concurrently; please retry"}, 409)
+			return
+		}
 		write(w, p, 200)
 	case "rollback":
 		if !domain.ValidTransition(p.State, domain.StateRolledBack) {
@@ -158,7 +164,10 @@ func (s *Server) planAction(w http.ResponseWriter, r *http.Request) {
 		}
 		p.State = domain.StateRolledBack
 		p.Revision++
-		_ = s.Store.SavePlan(r.Context(), p)
+		if err := s.Store.SavePlan(r.Context(), p); err != nil {
+			write(w, map[string]string{"error": "plan was modified concurrently; please retry"}, 409)
+			return
+		}
 		write(w, p, 200)
 	case "simulate":
 		write(w, simulation.Run(r.Context(), p), 200)

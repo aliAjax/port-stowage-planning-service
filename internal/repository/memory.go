@@ -2,10 +2,16 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/example/port-stowage-planner/internal/domain"
 )
+
+// ErrStalePlan is returned when a plan being saved is older than the plan
+// already stored under the same ID. Callers must re-read the current plan and
+// reapply their changes on top of the latest revision before saving again.
+var ErrStalePlan = errors.New("plan is stale; a newer revision already exists")
 
 type Store struct {
 	mu         sync.RWMutex
@@ -85,21 +91,31 @@ func (s *Store) Cranes(_ context.Context, port string) []domain.QuayCrane {
 func (s *Store) SavePlan(_ context.Context, p domain.Plan) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.plans[p.ID] = p
+	if cur, ok := s.plans[p.ID]; ok {
+		// Reject writes that would regress the stored revision: a caller
+		// operating on a stale copy must not clobber a newer revision.
+		if p.Revision < cur.Revision {
+			return ErrStalePlan
+		}
+	}
+	s.plans[p.ID] = clonePlan(p)
 	return nil
 }
 func (s *Store) Plan(_ context.Context, id string) (domain.Plan, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	p, ok := s.plans[id]
-	return p, ok
+	if !ok {
+		return domain.Plan{}, false
+	}
+	return clonePlan(p), true
 }
 func (s *Store) ListPlans(_ context.Context) []domain.Plan {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := []domain.Plan{}
+	out := make([]domain.Plan, 0, len(s.plans))
 	for _, p := range s.plans {
-		out = append(out, p)
+		out = append(out, clonePlan(p))
 	}
 	return out
 }
@@ -107,4 +123,30 @@ func (s *Store) AddAck(_ context.Context, a domain.Ack) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.acks = append(s.acks, a)
+}
+
+// clonePlan returns a deep copy of p so that callers cannot mutate the store's
+// internal slices or maps by editing a returned plan.
+func clonePlan(p domain.Plan) domain.Plan {
+	if p.Decisions != nil {
+		d := make([]domain.Decision, len(p.Decisions))
+		for i, dec := range p.Decisions {
+			d[i] = dec
+			if dec.Reasons != nil {
+				d[i].Reasons = append([]string(nil), dec.Reasons...)
+			}
+		}
+		p.Decisions = d
+	}
+	if p.Instructions != nil {
+		p.Instructions = append([]domain.WorkInstruction(nil), p.Instructions...)
+	}
+	if p.Explanations != nil {
+		e := make(map[string][]string, len(p.Explanations))
+		for k, v := range p.Explanations {
+			e[k] = append([]string(nil), v...)
+		}
+		p.Explanations = e
+	}
+	return p
 }
