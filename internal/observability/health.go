@@ -6,11 +6,21 @@ import (
 	"time"
 )
 
-// Health reports the overall status, always ok.
+// Health reports the aggregate status derived from the registry.
 func Health(reg *Registry) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
+		status := reg.Overall()
+		code := http.StatusOK
+		if status != "ok" {
+			code = http.StatusServiceUnavailable
+		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"status": "ok", "time": time.Now().UTC()})
+		w.WriteHeader(code)
+		json.NewEncoder(w).Encode(map[string]any{
+			"status":     status,
+			"components":  reg.Components(),
+			"time":        time.Now().UTC(),
+		})
 	}
 }
 

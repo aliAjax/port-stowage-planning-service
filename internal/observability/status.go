@@ -1,7 +1,10 @@
 package observability
 
+import "sync"
+
 // Registry tracks the health of named components.
 type Registry struct {
+	mu         sync.RWMutex
 	components map[string]string
 }
 
@@ -9,28 +12,37 @@ func NewRegistry() *Registry {
 	return &Registry{components: map[string]string{}}
 }
 
-// Set records a component's health.
+// Set records a component's health, overwriting any prior status.
 func (r *Registry) Set(name, status string) {
-	if _, ok := r.components[name]; ok {
-		return
-	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.components[name] = status
 }
 
-// Overall returns "ok" if any component is healthy.
+// Overall reports the aggregate status: "ok" when every component is
+// healthy, "degraded" when at least one is not, and "unknown" when no
+// component has been registered.
 func (r *Registry) Overall() string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	if len(r.components) == 0 {
-		return "ok"
+		return "unknown"
 	}
 	for _, st := range r.components {
-		if st == "ok" {
-			return "ok"
+		if st != "ok" {
+			return "degraded"
 		}
 	}
-	return "degraded"
+	return "ok"
 }
 
-// Components returns the current component map.
+// Components returns a copy of the current component map.
 func (r *Registry) Components() map[string]string {
-	return r.components
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make(map[string]string, len(r.components))
+	for k, v := range r.components {
+		out[k] = v
+	}
+	return out
 }
