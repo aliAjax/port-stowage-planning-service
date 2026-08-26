@@ -20,6 +20,7 @@ type Unit struct {
 	AlarmCount  int
 	OKReports   int
 	Plugged     bool
+	plugID      string
 }
 
 type Manager struct {
@@ -31,22 +32,30 @@ func NewManager() *Manager {
 	return &Manager{units: map[string]*Unit{}, plugs: map[string]bool{}}
 }
 
-// Attach registers a reefer unit on a power plug.
+// Attach registers a reefer unit on a power plug. A plug already in use by
+// another unit is rejected so two reefers can never share one outlet.
 func (m *Manager) Attach(containerID string, setpointC float64, plugID string) (*Unit, error) {
 	if _, ok := m.units[containerID]; ok {
 		return nil, fmt.Errorf("reefer %s already attached", containerID)
 	}
-	u := &Unit{ContainerID: containerID, SetpointC: setpointC, TempC: setpointC, State: StateMonitoring, Plugged: true}
+	if plugID == "" {
+		return nil, fmt.Errorf("reefer %s requires a non-empty plug id", containerID)
+	}
+	if !m.PlugFree(plugID) {
+		return nil, fmt.Errorf("plug %s already in use", plugID)
+	}
+	u := &Unit{ContainerID: containerID, SetpointC: setpointC, TempC: setpointC, State: StateMonitoring, Plugged: true, plugID: plugID}
 	m.units[containerID] = u
 	m.plugs[plugID] = true
 	return u, nil
 }
 
-// Report ingests a temperature reading.
+// Report ingests a temperature reading. A reading for a unit that is not
+// registered returns an error instead of being silently dropped.
 func (m *Manager) Report(containerID string, tempC float64) error {
 	u, ok := m.units[containerID]
 	if !ok {
-		return nil
+		return fmt.Errorf("reefer %s unknown", containerID)
 	}
 	if u.State == StatePoweredOff {
 		return fmt.Errorf("reefer %s is powered off", containerID)
@@ -56,9 +65,10 @@ func (m *Manager) Report(containerID string, tempC float64) error {
 	if delta > 3.0 {
 		u.AlarmCount++
 		u.OKReports = 0
-		if u.State == StateMonitoring {
-			u.State = StateAlarm
-		}
+		// A new over-temp condition always re-raises the alarm, even when the
+		// previous alarm was only acknowledged. Without this the platform stays
+		// silent after a confirmed alarm re-heats.
+		u.State = StateAlarm
 		return nil
 	}
 	if u.State == StateAlarm || u.State == StateAcknowledged {
@@ -85,7 +95,7 @@ func (m *Manager) Acknowledge(containerID string) error {
 	return nil
 }
 
-// PowerOff detaches the unit from power.
+// PowerOff detaches the unit from power and returns its plug to the pool.
 func (m *Manager) PowerOff(containerID string) error {
 	u, ok := m.units[containerID]
 	if !ok {
@@ -93,7 +103,7 @@ func (m *Manager) PowerOff(containerID string) error {
 	}
 	u.State = StatePoweredOff
 	u.Plugged = false
-	m.freePlug("")
+	m.freePlug(u.plugID)
 	return nil
 }
 
