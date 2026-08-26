@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>港口配载控制台</title>
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<header><h1>港口配载控制台</h1><p id="status" class="ok">服务连接中…</p></header>
+<main>
+<section id="voyage-panel">
+  <h2>航次</h2>
+  <form id="voyage-form">
+    <input name="id" placeholder="航次ID" required>
+    <input name="vessel_id" value="vessel-demo" hidden>
+    <input name="port_id" value="port-1" hidden>
+    <button type="submit">创建航次</button>
+  </form>
+  <ul id="voyage-list"></ul>
+</section>
+<section id="container-panel">
+  <h2>集装箱</h2>
+  <form id="container-form">
+    <input name="id" placeholder="箱号" required>
+    <input name="voyage_id" placeholder="航次ID" required>
+    <select name="iso_size"><option value="20">20</option><option value="40">40</option><option value="45">45</option></select>
+    <input name="weight_kg" type="number" placeholder="重量kg" required>
+    <input name="destination" placeholder="目的港" value="TYO">
+    <input name="priority" type="number" value="1">
+    <button type="submit">注册</button>
+  </form>
+  <p id="container-msg"></p>
+</section>
+<section id="plan-panel">
+  <h2>配载计划</h2>
+  <form id="plan-form">
+    <input name="id" placeholder="计划ID" required>
+    <input name="voyage_id" placeholder="航次ID" required>
+    <button type="submit">求解</button>
+  </form>
+  <pre id="plan-output"></pre>
+</section>
+</main>
+<script src="/assets/app.js"></script>
+</body>
+</html>
